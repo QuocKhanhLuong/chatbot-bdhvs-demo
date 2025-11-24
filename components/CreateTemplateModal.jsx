@@ -103,7 +103,7 @@ export default function CreateTemplateModal({ isOpen, onClose, onCreateTemplate,
                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
                   <div className="font-medium mb-1">Pro tip</div>
                   <div>
-                    Templates are perfect for frequently used prompts, instructions, or conversation starters. They'll
+                    Templates are perfect for frequently used prompts, instructions, or conversation starters. They&apos;ll
                     be inserted directly into your chat input when selected.
                   </div>
                 </div>

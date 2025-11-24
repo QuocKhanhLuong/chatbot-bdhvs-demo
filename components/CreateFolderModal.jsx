@@ -57,7 +57,7 @@ export default function CreateFolderModal({ isOpen, onClose, onCreateFolder }) {
               <div className="mt-4 flex items-start gap-3 rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
                 <Lightbulb className="h-5 w-5 text-zinc-500 mt-0.5 shrink-0" />
                 <div className="text-sm text-zinc-600 dark:text-zinc-400">
-                  <div className="font-medium mb-1">What's a folder?</div>
+                  <div className="font-medium mb-1">What&apos;s a folder?</div>
                   <div>
                     Folders keep chats, files, and custom instructions in one place. Use them for ongoing work, or just
                     to keep things tidy.

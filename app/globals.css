@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  :root {
+    /* Bright & Fresh Color Scheme */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    
+    /* Primary: Pink/Rose tones for the bright, fresh look */
+    --primary: 350 85% 60%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary: Light pink/rose background */
+    --secondary: 350 100% 97%;
+    --secondary-foreground: 350 85% 40%;
+    
+    /* Muted: Very light pink/gray */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    
+    /* Accent: Soft pink */
+    --accent: 350 100% 95%;
+    --accent-foreground: 350 85% 50%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 350 30% 90%;
+    --input: 350 30% 90%;
+    --ring: 350 85% 60%;
+    
+    --radius: 0.75rem;
+    
+    /* Chart colors - bright and vibrant */
+    --chart-1: 350 85% 60%;
+    --chart-2: 280 70% 65%;
+    --chart-3: 200 80% 55%;
+    --chart-4: 160 70% 50%;
+    --chart-5: 40 90% 60%;
+    
+    /* Sidebar variables */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+  
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 95%;
+    
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 95%;
+    
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 95%;
+    
+    /* Primary in dark mode: Still pink but adjusted */
+    --primary: 350 70% 55%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary: Dark pink/rose background */
+    --secondary: 350 30% 15%;
+    --secondary-foreground: 350 70% 80%;
+    
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 60%;
+    
+    --accent: 350 30% 20%;
+    --accent-foreground: 350 70% 70%;
+    
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 350 70% 55%;
+    
+    /* Chart colors for dark mode */
+    --chart-1: 350 70% 60%;
+    --chart-2: 280 65% 60%;
+    --chart-3: 200 70% 55%;
+    --chart-4: 160 60% 50%;
+    --chart-5: 40 80% 55%;
+    
+    /* Sidebar variables for dark mode */
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+  
+  /* Smooth animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+}
+
+/* Custom scrollbar for a fresh look */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background-color: #f3f4f6;
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track:is(.dark *) {
+  background-color: #1f2937;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #f9a8d4;
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #f472b6;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:is(.dark *) {
+  background-color: #be185d;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:is(.dark *):hover {
+  background-color: #db2777;
+}

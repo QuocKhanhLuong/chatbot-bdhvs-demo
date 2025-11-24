@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { Calendar, LayoutGrid, MoreHorizontal } from "lucide-react"
+import { useTheme } from "next-themes"
 import Sidebar from "./Sidebar"
 import Header from "./Header"
 import ChatPane from "./ChatPane"
@@ -10,41 +11,7 @@ import ThemeToggle from "./ThemeToggle"
 import { INITIAL_FOLDERS, INITIAL_TEMPLATES } from "./mockData"
 
 export default function AIAssistantWithStreaming() {
-  const [theme, setTheme] = useState("light")
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-    const saved = localStorage.getItem("theme")
-    if (saved) {
-      setTheme(saved)
-    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark")
-    }
-  }, [])
-
-  useEffect(() => {
-    try {
-      if (theme === "dark") document.documentElement.classList.add("dark")
-      else document.documentElement.classList.remove("dark")
-      document.documentElement.setAttribute("data-theme", theme)
-      document.documentElement.style.colorScheme = theme
-      localStorage.setItem("theme", theme)
-    } catch {}
-  }, [theme])
-
-  useEffect(() => {
-    try {
-      const media = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)")
-      if (!media) return
-      const listener = (e) => {
-        const saved = localStorage.getItem("theme")
-        if (!saved) setTheme(e.matches ? "dark" : "light")
-      }
-      media.addEventListener("change", listener)
-      return () => media.removeEventListener("change", listener)
-    } catch {}
-  }, [theme])
+  const { theme, setTheme } = useTheme()
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => {
