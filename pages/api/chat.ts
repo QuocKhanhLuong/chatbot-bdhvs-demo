@@ -1,22 +1,10 @@
 import { Message } from "@/types";
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { generateResponse } from '../../gemini.js';
+import { retrieveContext } from '../../utils/rag';
 
-// Fix process.env access by adding proper type declarations
-declare global {
-  namespace NodeJS {
-    interface ProcessEnv {
-      REACT_APP_API_URL: string;
-    }
-  }
-}
-
-const API_URL = process.env.REACT_APP_API_URL;
-
-// Remove edge runtime config
-// export const config = {
-//   runtime: "edge",
-//   regions: ['iad1']
-// };
+// In-memory cache for responses
+const responseCache = new Map<string, string>();
 
 const handler = async (req: NextApiRequest, res: NextApiResponse) => {
   try {
@@ -35,89 +23,53 @@ const handler = async (req: NextApiRequest, res: NextApiResponse) => {
     // Get the last message from user
     const lastMessage = messages[messages.length - 1];
     console.log("Processing message:", lastMessage);
-    
+
     if (!lastMessage || !lastMessage.content) {
       throw new Error("Invalid message format");
     }
 
-    // Call Backend API
-    console.log("Calling Backend API with content:", lastMessage.content);
-    const response = await fetch(`${API_URL}/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: [{
-          role: "user",
-          content: lastMessage.content
-        }]
-      })
-    });
+    // Use trimmed content as cache key
+    const cacheKey = lastMessage.content.trim();
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    // Check if we have a cached response
+    if (responseCache.has(cacheKey)) {
+      console.log("Cache hit! Returning cached response");
+      const cachedContent = responseCache.get(cacheKey)!;
+      return res.status(200).json({
+        role: "assistant",
+        content: cachedContent,
+        streaming: true,
+        cached: true
+      });
     }
 
-    // For streaming response, we need to read the response as text
-    const responseText = await response.text();
-    console.log("Backend API response text:", responseText);
-    
-    let content = "Không thể xử lý yêu cầu của bạn";
-    
-    try {
-      // Try to parse the response text as JSON if possible
-      const data = JSON.parse(responseText);
-      content = data.content || data.message || content;
-    } catch (parseError) {
-      // If parsing fails, try to extract content from chunk format
-      console.log("Parsing response as JSON failed, trying to extract from chunks");
-      
-      // Check for chunked format: {"chunk": "text"}{"chunk": "more text"}
-      const chunkPattern = /\{"chunk":[\s]*"([^"]*)"\}/g;
-      const matches = Array.from(responseText.matchAll(chunkPattern));
-      
-      if (matches && matches.length > 0) {
-        // Extract and combine chunks
-        let extractedContent = '';
-        
-        for (const match of matches) {
-          if (match[1]) {
-            // Decode escaped Unicode characters
-            const chunkText = match[1].replace(/\\u([0-9a-fA-F]{4})/g, (_: string, code: string) => {
-              return String.fromCharCode(parseInt(code, 16));
-            });
-            
-            extractedContent += chunkText;
-          }
-        }
-        
-        if (extractedContent) {
-          content = extractedContent;
-          console.log("Successfully extracted content from chunks");
-        } else {
-          // If extraction didn't yield valid content, use raw text
-          content = responseText.trim();
-        }
-      } else {
-        // Use raw text as fallback
-        content = responseText.trim();
-      }
-    }
-    
+    // No cache, retrieve context from knowledge base
+    console.log("Cache miss. Retrieving RAG context...");
+    const context = await retrieveContext(lastMessage.content);
+    console.log("Retrieved RAG Context:", context || "(no matching documents)");
+
+    // Generate new response with context
+    console.log("Calling Gemini API with context...");
+    const content = await generateResponse(lastMessage.content, context);
+
+    // Store in cache
+    responseCache.set(cacheKey, content);
+    console.log(`Response cached. Cache size: ${responseCache.size}`);
+
     // Return the response
-    const jsonResponse = { 
+    const jsonResponse = {
       role: "assistant",
       content: content,
-      streaming: true // Enable streaming on the frontend
+      streaming: true,
+      cached: false
     };
-    console.log("Sending response:", jsonResponse);
-    
+    console.log("Sending response");
+
     return res.status(200).json(jsonResponse);
   } catch (error: any) {
     console.error("Error in chat API:", error);
-    return res.status(500).json({ 
-      error: error.message || "Internal server error" 
+    return res.status(500).json({
+      error: error.message || "Internal server error"
     });
   }
 };

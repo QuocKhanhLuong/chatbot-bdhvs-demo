@@ -30,41 +30,25 @@ export const ChatMessage: FC<Props> = ({ message, isStreaming = false, darkMode 
   const formattedContent = useMemo(() => {
     if (!displayedContent) return [<div key="empty"></div>];
 
-    // Function to safely handle code block parsing
     const parseCodeBlocks = (text: string) => {
-      // Handle case where there are no code blocks
-      if (!text.includes("```")) {
-        return [
-          <ReactMarkdown key="text-only">
-            {text}
-          </ReactMarkdown>
-        ];
-      }
-
-      // Split by code block markers
       const segments = text.split(/(```[\s\S]*?```)/);
-      
       return segments.map((segment, index) => {
-        // Check if this segment is a code block
         if (segment.startsWith("```") && segment.endsWith("```")) {
-          // Extract the code block content
+          // Extract code content
           const codeContent = segment.slice(3, -3);
-          
-          // Check if there's a language specifier in the first line
-          const firstLineBreak = codeContent.indexOf('\n');
-          
+          const firstLineBreak = codeContent.indexOf("\n");
+
           if (firstLineBreak === -1) {
-            // Single line code block with no language
             return (
               <div key={`code-${index}`} className="mb-4 last:mb-0">
                 <CodeBlock language="plaintext" value={codeContent.trim()} />
               </div>
             );
           }
-          
+
           const firstLine = codeContent.slice(0, firstLineBreak).trim();
           const restOfCode = codeContent.slice(firstLineBreak + 1);
-          
+
           return (
             <div key={`code-${index}`} className="mb-4 last:mb-0">
               <CodeBlock language={firstLine || "plaintext"} value={restOfCode.trim()} />
@@ -78,7 +62,7 @@ export const ChatMessage: FC<Props> = ({ message, isStreaming = false, darkMode 
             </ReactMarkdown>
           );
         }
-        
+
         return null;
       }).filter(Boolean);
     };
@@ -86,31 +70,42 @@ export const ChatMessage: FC<Props> = ({ message, isStreaming = false, darkMode 
     return parseCodeBlocks(displayedContent);
   }, [displayedContent]);
 
+  const isUser = message.role === "user";
+
   return (
-    <div className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"} mb-3 ${isNew ? 'message-enter' : ''}`}>
+    <div className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"} ${isNew ? 'animate-fadeIn' : ''}`}>
+      {/* Avatar for Assistant */}
+      {!isUser && (
+        <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-xs font-bold text-white shadow-sm">
+          AI
+        </div>
+      )}
+
+      {/* Message bubble */}
       <div
-        className={`relative py-3 px-4 rounded-lg max-w-[90%] sm:max-w-[80%] ${
-          message.role === "assistant"
-            ? darkMode 
-              ? "bg-gray-700 text-white shadow-sm rounded-tl-none"
-              : "bg-white text-neutral-900 shadow-sm rounded-tl-none"
-            : "bg-[#e24242] text-white rounded-tr-none"
-        } ${isStreaming ? 'streaming-message' : ''}`}
+        className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm transition-all ${
+          isUser
+            ? "bg-gradient-to-br from-pink-500 to-rose-500 text-white"
+            : darkMode
+            ? "border border-gray-700 bg-gray-800 text-gray-100"
+            : "border border-pink-100 bg-white text-gray-900"
+        }`}
+        style={{ overflowWrap: "anywhere" }}
       >
-        <div className={`prose ${message.role === "assistant" ? darkMode ? "prose-invert" : "prose-neutral" : "prose-invert"} max-w-none`}>
+        <div className="whitespace-pre-wrap break-words">
           {formattedContent}
         </div>
-        
         {isStreaming && (
-          <div className="flex mt-2">
-            <div className="typing-indicator">
-              <span className="dot"></span>
-              <span className="dot"></span>
-              <span className="dot"></span>
-            </div>
-          </div>
+          <span className="ml-1 inline-block h-3 w-1 animate-pulse bg-current"></span>
         )}
       </div>
+
+      {/* Avatar for User */}
+      {isUser && (
+        <div className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 text-xs font-bold text-white shadow-sm">
+          U
+        </div>
+      )}
     </div>
   );
 };

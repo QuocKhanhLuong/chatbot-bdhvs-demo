@@ -21,7 +21,7 @@ export const Chat: FC<Props> = ({ messages, loading, streaming, onSend, onReset 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = (smooth: boolean = false) => {
-    messagesEndRef.current?.scrollIntoView({behavior : smooth ? "smooth" : "auto"});
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
   };
 
   const handleScroll = () => {
@@ -37,29 +37,62 @@ export const Chat: FC<Props> = ({ messages, loading, streaming, onSend, onReset 
     scrollToBottom(true);
   }, [messages, loading, streaming]);
 
+  const count = messages.length;
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex flex-row justify-between items-center mb-4 sm:mb-8">
-        <ResetChat onReset={onReset} />
+    <div className="flex h-full min-h-0 flex-1 flex-col">
+      {/* Header with title and reset button */}
+      <div className="flex-none px-4 py-4 sm:px-8">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-2xl sm:text-3xl font-sans tracking-tight text-gray-900 dark:text-white">
+            Chatbot Soni
+          </div>
+          <ResetChat onReset={onReset} />
+        </div>
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {count} {count === 1 ? 'message' : 'messages'}
+        </div>
+        
+        {/* Tags */}
+        <div className="mt-4 flex flex-wrap gap-2 border-b border-gray-200 pb-4 dark:border-gray-700">
+          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
+            Certified
+          </span>
+          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
+            Personalized
+          </span>
+          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
+            Experienced
+          </span>
+          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
+            Helpful
+          </span>
+        </div>
       </div>
 
-      <div 
+      {/* Messages area */}
+      <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className={`flex-1 overflow-y-auto rounded-lg rounded-b-none p-5 sm:p-5 sm:border ${darkMode ? "bg-gray-800 text-white border-gray-700" : "bg-[#FFF5F5] border-neutral-300"}`}
+        className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-8"
       >
-        {messages.map((message, index) => (
-          <div
-            key={`msg-${index}-${message.timestamp || index}`}
-            className="my-1 sm:my-1.5"
-          >
-            <ChatMessage 
-              message={message} 
-              isStreaming={message.isStreaming && streaming} 
-              darkMode={darkMode}
-            />
+        {messages.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-pink-300 bg-white p-6 text-sm text-gray-500 dark:border-pink-700 dark:bg-gray-800 dark:text-gray-400">
+            No messages yet. Say hello to start.
           </div>
-        ))}
+        ) : (
+          <>
+            {messages.map((message, index) => (
+              <div key={`msg-${index}-${message.timestamp || index}`}>
+                <ChatMessage
+                  message={message}
+                  isStreaming={message.isStreaming && streaming}
+                  darkMode={darkMode}
+                />
+              </div>
+            ))}
+          </>
+        )}
 
         {loading && !streaming && (
           <div className="my-1 sm:my-1.5">
@@ -70,20 +103,20 @@ export const Chat: FC<Props> = ({ messages, loading, streaming, onSend, onReset 
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="w-full max-w-[800px] mx-auto">
-        <div className={`${darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-neutral-200"} rounded-b-xl shadow-lg p-4 border border-t-0`}>
-          <ChatInput onSend={onSend} disabled={loading || streaming} darkMode={darkMode} />
-        </div>
+      {/* Input area */}
+      <div className="flex-none border-t border-gray-200/60 p-4 dark:border-gray-700">
+        <ChatInput onSend={onSend} disabled={loading || streaming} darkMode={darkMode} />
       </div>
 
+      {/* Scroll to bottom button */}
       {showScrollButton && (
         <button
           onClick={() => scrollToBottom(true)}
-          className="fixed bottom-24 right-6 bg-[#e24242] text-white p-3 rounded-full shadow-lg hover:opacity-80 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-[#e24242] focus:ring-offset-2"
+          className="fixed bottom-24 right-6 rounded-full bg-pink-500 p-3 text-white shadow-lg transition-all duration-200 hover:scale-110 hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
           aria-label="Scroll to bottom"
         >
           <svg
-            className="w-6 h-6"
+            className="h-6 w-6"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

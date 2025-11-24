@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 export default function App({ Component, pageProps }: AppProps<{}>) {
   return (
     <DarkModeProvider>
-      <main className={`${inter.className} min-h-screen bg-gradient-to-b from-gray-50 to-gray-100`}>
+      <main className={`${inter.className} min-h-screen bg-background`}>
         <Component {...pageProps} />
       </main>
     </DarkModeProvider>
