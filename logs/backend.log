@@ -1,0 +1,67 @@
+/Users/alvinluong/chatbot-sinno/backend/api/api.py:51: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+  class ChatRequest(BaseModel):
+/Users/alvinluong/chatbot-sinno/backend/api/api.py:70: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+  class ChatResponse(BaseModel):
+/Users/alvinluong/chatbot-sinno/backend/api/api.py:92: DeprecationWarning: 
+        on_event is deprecated, use lifespan event handlers instead.
+
+        Read more about it in the
+        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
+        
+  @app.on_event("startup")
+INFO:     Will watch for changes in these directories: ['/Users/alvinluong/chatbot-sinno/backend/api']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [26042] using StatReload
+INFO:     Started server process [26071]
+INFO:     Waiting for application startup.
+INFO:api:==================================================
+INFO:api:🚀 Starting FastAPI RAG Server
+INFO:api:==================================================
+INFO:api:Initializing RAG Engine...
+INFO:rag_engine:Initialized ExamRAG with PDF directory: /Users/alvinluong/chatbot-sinno/data/pdf
+INFO:rag_engine:Using MegaLLM for both LLM and Embeddings
+INFO:rag_engine:Initializing RAG engine...
+INFO:rag_engine:Loading vector store from /Users/alvinluong/chatbot-sinno/backend/faiss_index...
+INFO:faiss.loader:Loading faiss.
+INFO:faiss.loader:Successfully loaded faiss.
+INFO:rag_engine:Vector store loaded successfully
+INFO:rag_engine:Setting up QA chain with Llama 3.3 70B via MegaLLM...
+INFO:rag_engine:QA chain setup complete
+INFO:rag_engine:RAG engine initialized successfully!
+INFO:api:✅ RAG Engine initialized successfully!
+INFO:api:==================================================
+INFO:     Application startup complete.
+INFO:     127.0.0.1:58109 - "GET /health HTTP/1.1" 200 OK
+INFO:api:📨 Received chat request: tôi muốn hỏi về daotao.ai...
+INFO:rag_engine:Processing query: tôi muốn hỏi về daotao.ai...
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+INFO:httpx:HTTP Request: POST https://ai.megallm.io/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:rag_engine:Answer generated with 3 sources
+INFO:api:✅ Generated response with 3 sources
+INFO:     127.0.0.1:58132 - "POST /chat HTTP/1.1" 200 OK
+INFO:api:📨 Received chat request: tôi muốn làm bài thi...
+INFO:rag_engine:Processing query: tôi muốn làm bài thi...
+INFO:httpx:HTTP Request: POST https://ai.megallm.io/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:rag_engine:Answer generated with 3 sources
+INFO:api:✅ Generated response with 3 sources
+INFO:     127.0.0.1:58144 - "POST /chat HTTP/1.1" 200 OK
+INFO:api:📨 Received chat request: tôi là học viên, hướng dẫn tôi ...
+INFO:rag_engine:Processing query: tôi là học viên, hướng dẫn tôi ...
+INFO:httpx:HTTP Request: POST https://ai.megallm.io/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:rag_engine:Answer generated with 3 sources
+INFO:api:✅ Generated response with 3 sources
+INFO:     127.0.0.1:58172 - "POST /chat HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [26071]
+INFO:     Stopping reloader process [26042]
+/Users/alvinluong/opt/anaconda3/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '

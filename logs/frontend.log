@@ -1,0 +1,31 @@
+
+> chatbot-soni@1.1.2 dev
+> next dev
+
+   ▲ Next.js 15.5.6
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.51:3000
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 1878ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.7s (1627 modules)
+ GET / 200 in 3548ms
+ ✓ Compiled in 859ms (773 modules)
+ ✓ Compiled /api/stream in 418ms (1621 modules)
+📨 Forwarding to Python backend: tôi muốn hỏi về daotao.ai
+🔗 Calling Python backend at http://localhost:8000/chat
+✅ Received response from Python backend (485 chars)
+ POST /api/stream 200 in 12964ms
+📨 Forwarding to Python backend: tôi muốn làm bài thi
+🔗 Calling Python backend at http://localhost:8000/chat
+✅ Received response from Python backend (414 chars)
+ POST /api/stream 200 in 10015ms
+ ✓ Compiled in 944ms (1635 modules)
+ GET / 200 in 247ms
+ ✓ Compiled in 2.1s (1635 modules)
+ GET / 200 in 115ms
+📨 Forwarding to Python backend: tôi là học viên, hướng dẫn tôi 
+🔗 Calling Python backend at http://localhost:8000/chat
+[?25h

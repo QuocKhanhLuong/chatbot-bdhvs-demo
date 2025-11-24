@@ -196,6 +196,7 @@ export default function Sidebar({
             animate={{ x: open ? 0 : 0 }}
             exit={{ x: -340 }}
             transition={{ type: "spring", stiffness: 260, damping: 28 }}
+            suppressHydrationWarning
             className={cls(
               "z-50 flex h-full w-80 shrink-0 flex-col border-r border-zinc-200/60 bg-white dark:border-zinc-800 dark:bg-zinc-900",
               "fixed inset-y-0 left-0 md:static md:translate-x-0",

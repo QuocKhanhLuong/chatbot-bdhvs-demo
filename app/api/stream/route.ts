@@ -1,8 +1,11 @@
 import { NextRequest } from 'next/server'
 import { Message } from "@/types"
 
-export const runtime = 'nodejs' // or 'edge' if you prefer edge runtime
-export const dynamic = 'force-dynamic' // disable caching
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+// Python FastAPI backend URL
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || 'http://localhost:8000'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     // Get the last message from user
     const lastMessage = messages[messages.length - 1];
-    console.log("Processing message for streaming:", lastMessage);
+    console.log("📨 Forwarding to Python backend:", lastMessage.content.substring(0, 100));
 
     if (!lastMessage || !lastMessage.content) {
       return new Response(
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
         // Helper to send SSE messages
         const sendSSE = (data: any) => {
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(data)}\\n\\n`)
+            encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
           );
         };
 
@@ -45,22 +48,31 @@ export async function POST(request: NextRequest) {
           // Send start message
           sendSSE({ type: 'start', streamId });
 
-          console.log(`Processing message with RAG:`, lastMessage.content);
+          console.log(`🔗 Calling Python backend at ${PYTHON_BACKEND_URL}/chat`);
 
-          // Import our local AI and RAG functions
-          const geminiModule = await import('../../../gemini.js');
-          const ragModule = await import('../../../utils/rag');
-          const generateResponse = geminiModule.default || geminiModule.generateResponse || geminiModule;
-          const retrieveContext = ragModule.retrieveContext;
+          // Call Python FastAPI backend
+          const response = await fetch(`${PYTHON_BACKEND_URL}/chat`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              message: lastMessage.content,
+              include_sources: false
+            })
+          });
 
-          // Retrieve context from knowledge base
-          const context = await retrieveContext(lastMessage.content);
-          console.log("Retrieved context for streaming:", context ? "Context found" : "No context");
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(errorData.detail || `Backend error: ${response.status}`);
+          }
 
-          // Generate response with context
-          const fullResponse = await generateResponse(lastMessage.content, context);
+          const data = await response.json();
+          const fullResponse = data.response;
 
-          // Simulate streaming by sending characters one by one
+          console.log(`✅ Received response from Python backend (${fullResponse.length} chars)`);
+
+          // Simulate streaming by sending characters one by one for smooth UX
           let accumulatedContent = '';
           const characters = fullResponse.split('');
 
@@ -73,8 +85,8 @@ export async function POST(request: NextRequest) {
               streamId
             });
 
-            // Add delay for typing effect
-            await new Promise(resolve => setTimeout(resolve, 20));
+            // Add small delay for typing effect
+            await new Promise(resolve => setTimeout(resolve, 15));
           }
 
           // Send completion message
@@ -86,7 +98,7 @@ export async function POST(request: NextRequest) {
 
           controller.close();
         } catch (error: any) {
-          console.error("Streaming error:", error);
+          console.error("❌ Streaming error:", error);
           sendSSE({
             error: error.message || 'Lỗi khi xử lý yêu cầu',
             streamId
