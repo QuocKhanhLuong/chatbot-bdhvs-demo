@@ -12,7 +12,10 @@ Uses LangGraph for agent orchestration.
 
 from typing import TypedDict, Annotated, List, Literal, Optional, Any, Dict
 from dataclasses import dataclass
+from contextlib import asynccontextmanager
+from pathlib import Path
 import operator
+import os
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -20,6 +23,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
 from app.config import settings
 from app.tools import (
@@ -32,6 +36,28 @@ from app.tools import (
     deep_research,
     write_final_report
 )
+
+
+# =============================================================================
+# SQLite Checkpointer for Persistent Storage
+# =============================================================================
+
+# Path to SQLite database for chat history persistence
+DB_PATH = Path(__file__).parent.parent / "data" / "chat_history.db"
+
+
+@asynccontextmanager
+async def get_checkpointer():
+    """Get async SQLite checkpointer for persistent chat history.
+    
+    Yields:
+        AsyncSqliteSaver instance for use with LangGraph
+    """
+    # Ensure data directory exists
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    
+    async with AsyncSqliteSaver.from_conn_string(str(DB_PATH)) as saver:
+        yield saver
 
 
 # =============================================================================
@@ -426,8 +452,13 @@ def should_use_tools(state: AgentState) -> str:
 # Build Multi-Agent Graph
 # =============================================================================
 
-def create_multi_agent_graph():
-    """Create the multi-agent workflow graph."""
+def create_multi_agent_graph(checkpointer=None):
+    """Create the multi-agent workflow graph.
+    
+    Args:
+        checkpointer: Optional checkpointer for persistent storage.
+                      If None, uses in-memory MemorySaver.
+    """
     workflow = StateGraph(AgentState)
     
     # Add nodes
@@ -482,7 +513,11 @@ def create_multi_agent_graph():
     workflow.add_edge("general", END)
     workflow.add_edge("deep_research", END)
     
-    return workflow.compile(checkpointer=MemorySaver())
+    # Use provided checkpointer or fallback to MemorySaver
+    if checkpointer is None:
+        checkpointer = MemorySaver()
+    
+    return workflow.compile(checkpointer=checkpointer)
 
 
 # =============================================================================
@@ -490,10 +525,17 @@ def create_multi_agent_graph():
 # =============================================================================
 
 class MultiAgentRunner:
-    """Runner for multi-agent system."""
+    """Runner for multi-agent system with persistent storage support."""
     
-    def __init__(self):
-        self.graph = create_multi_agent_graph()
+    def __init__(self, checkpointer=None):
+        """Initialize runner with optional checkpointer.
+        
+        Args:
+            checkpointer: Optional checkpointer for persistent storage.
+                          If None, uses in-memory MemorySaver.
+        """
+        self.graph = create_multi_agent_graph(checkpointer=checkpointer)
+        self._checkpointer = checkpointer
     
     async def run(
         self,
@@ -556,8 +598,26 @@ _runner: Optional[MultiAgentRunner] = None
 
 
 def get_multi_agent_runner() -> MultiAgentRunner:
-    """Get or create multi-agent runner."""
+    """Get or create multi-agent runner (uses in-memory storage).
+    
+    For persistent storage, use get_persistent_runner() instead.
+    """
     global _runner
     if _runner is None:
         _runner = MultiAgentRunner()
     return _runner
+
+
+@asynccontextmanager
+async def get_persistent_runner():
+    """Get multi-agent runner with persistent SQLite storage.
+    
+    This is an async context manager that should be used like:
+        async with get_persistent_runner() as runner:
+            result = await runner.run(message, thread_id)
+    
+    Yields:
+        MultiAgentRunner with SQLite-backed checkpointer
+    """
+    async with get_checkpointer() as checkpointer:
+        yield MultiAgentRunner(checkpointer=checkpointer)
