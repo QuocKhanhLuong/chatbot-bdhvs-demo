@@ -20,7 +20,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from app.config import settings
 from app.agent import get_agent, reset_agent, SYSTEM_PROMPT
-from app.agents import get_multi_agent_runner
+from app.agents import get_multi_agent_runner, get_persistent_runner
 from app.research import deep_research, quick_research, ResearchDepth
 from app.tools import search_arxiv_structured
 
@@ -354,19 +354,22 @@ async def get_thread_history(thread_id: str):
 @app.post("/agent/chat", response_model=ChatResponse)
 async def multi_agent_chat(request: ChatRequest):
     """
-    Multi-agent chat endpoint.
+    Multi-agent chat endpoint with persistent storage.
     
     Automatically routes to the appropriate agent:
     - Research Agent: Web search, ArXiv papers
     - Coding Agent: Python code execution
     - Document Agent: Local knowledge base
     - General Agent: Direct responses
+    
+    Chat history is persisted to SQLite database.
     """
-    runner = get_multi_agent_runner()
     thread_id = request.thread_id or str(uuid.uuid4())
     
     try:
-        result = await runner.run(request.message, thread_id)
+        # Use persistent runner with SQLite storage
+        async with get_persistent_runner() as runner:
+            result = await runner.run(request.message, thread_id)
         
         return ChatResponse(
             response=result.get("response", ""),
@@ -385,30 +388,33 @@ async def multi_agent_chat(request: ChatRequest):
 @app.post("/agent/chat/stream")
 async def multi_agent_chat_stream(request: ChatRequest):
     """
-    Streaming multi-agent chat endpoint.
+    Streaming multi-agent chat endpoint with persistent storage.
     Returns Server-Sent Events (SSE) stream.
+    
+    Chat history is persisted to SQLite database.
     """
-    runner = get_multi_agent_runner()
     thread_id = request.thread_id or str(uuid.uuid4())
     
     async def generate():
         try:
-            async for event in runner.stream(request.message, thread_id):
-                # Extract agent info
-                agent = event.get("current_agent", "")
-                
-                # Look for AI messages
-                for node_name, node_data in event.items():
-                    if isinstance(node_data, dict) and "messages" in node_data:
-                        for msg in node_data["messages"]:
-                            if isinstance(msg, AIMessage) and msg.content:
-                                data = {
-                                    "type": "content",
-                                    "content": msg.content,
-                                    "agent": agent,
-                                    "thread_id": thread_id
-                                }
-                                yield f"data: {json.dumps(data)}\n\n"
+            # Use persistent runner with SQLite storage
+            async with get_persistent_runner() as runner:
+                async for event in runner.stream(request.message, thread_id):
+                    # Extract agent info
+                    agent = event.get("current_agent", "")
+                    
+                    # Look for AI messages
+                    for node_name, node_data in event.items():
+                        if isinstance(node_data, dict) and "messages" in node_data:
+                            for msg in node_data["messages"]:
+                                if isinstance(msg, AIMessage) and msg.content:
+                                    data = {
+                                        "type": "content",
+                                        "content": msg.content,
+                                        "agent": agent,
+                                        "thread_id": thread_id
+                                    }
+                                    yield f"data: {json.dumps(data)}\n\n"
             
             yield f"data: {json.dumps({'type': 'done', 'thread_id': thread_id})}\n\n"
             

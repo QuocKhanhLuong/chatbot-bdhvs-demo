@@ -17,6 +17,10 @@ langchain-experimental>=0.3.0
 langchain-text-splitters>=0.3.0
 langgraph>=0.2.0
 langgraph-checkpoint>=2.0.0
+langgraph-checkpoint-sqlite>=2.0.0
+
+# Async SQLite for persistent chat history
+aiosqlite>=0.20.0
 
 # Web Search Tool
 tavily-python>=0.5.0
