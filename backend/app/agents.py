@@ -10,7 +10,7 @@ Inspired by HKUDS/Auto-Deep-Research:
 Uses LangGraph for agent orchestration.
 """
 
-from typing import TypedDict, Annotated, List, Literal, Optional, Any
+from typing import TypedDict, Annotated, List, Literal, Optional, Any, Dict
 from dataclasses import dataclass
 import operator
 
@@ -27,7 +27,10 @@ from app.tools import (
     get_python_repl_tool,
     search_arxiv,
     execute_python,
-    DocumentRetrieverTool
+    DocumentRetrieverTool,
+    deep_research_tool,
+    deep_research,
+    write_final_report
 )
 
 
@@ -35,13 +38,14 @@ from app.tools import (
 # Agent State
 # =============================================================================
 
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
     """State shared across all agents."""
     messages: Annotated[List[BaseMessage], operator.add]
     current_agent: str
-    task_type: str  # research, coding, document, general
+    task_type: str  # research, coding, document, general, deep_research
     context: dict
     final_response: Optional[str]
+    status_updates: List[Dict[str, Any]]  # For streaming status events
 
 
 # =============================================================================
@@ -65,23 +69,29 @@ Các agent có sẵn:
    - Dùng khi: tìm trong tài liệu đã upload
    - Keywords: "trong tài liệu", "document", "file", "uploaded"
 
-4. **general** - Trả lời trực tiếp không cần tools
+4. **deep_research** - Nghiên cứu chuyên sâu với nhiều vòng lặp
+   - Dùng khi: cần phân tích sâu, so sánh nhiều nguồn, viết báo cáo dài
+   - Keywords: "nghiên cứu sâu", "deep research", "phân tích chi tiết", "báo cáo", "report"
+
+5. **general** - Trả lời trực tiếp không cần tools
    - Dùng khi: câu hỏi đơn giản, chào hỏi, giải thích
    - Keywords: câu hỏi thông thường
 
-Phân tích yêu cầu và trả về tên agent: research, coding, document, hoặc general."""
+Phân tích yêu cầu và trả về tên agent: research, coding, document, deep_research, hoặc general."""
 
 
 RESEARCH_SYSTEM_PROMPT = """Bạn là Research Agent - chuyên gia nghiên cứu AI.
 
 Nhiệm vụ:
 1. Tìm kiếm web với Tavily để có thông tin mới nhất
-2. Tìm papers trên ArXiv cho nghiên cứu học thuật
-3. Tổng hợp thông tin và trình bày rõ ràng
+2. Tìm papers trên ArXiv cho nghiên cứu học thuật  
+3. Dùng deep_research_tool cho nghiên cứu phức tạp cần nhiều vòng lặp
+4. Tổng hợp thông tin và trình bày rõ ràng
 
 Tools có sẵn:
-- web_search: Tìm kiếm web
+- web_search: Tìm kiếm web nhanh
 - search_arxiv: Tìm papers trên ArXiv
+- deep_research_tool: Nghiên cứu sâu đệ quy (dùng cho câu hỏi phức tạp)
 
 Luôn cite nguồn và đánh giá độ tin cậy của thông tin.
 Trả lời bằng tiếng Việt nếu người dùng hỏi bằng tiếng Việt."""
@@ -168,7 +178,7 @@ async def triage_node(state: AgentState) -> dict:
     """Triage agent - determines which agent to route to."""
     llm = get_llm(temperature=0.1)
     
-    messages = state["messages"]
+    messages = state.get("messages", [])
     last_message = messages[-1].content if messages else ""
     
     response = await llm.ainvoke([
@@ -178,8 +188,10 @@ async def triage_node(state: AgentState) -> dict:
     
     content = response.content.lower() if isinstance(response.content, str) else ""
     
-    # Determine task type
-    if "research" in content:
+    # Determine task type - check deep_research first (more specific)
+    if "deep_research" in content or "deep research" in content:
+        task_type = "deep_research"
+    elif "research" in content:
         task_type = "research"
     elif "coding" in content or "code" in content:
         task_type = "coding"
@@ -190,30 +202,33 @@ async def triage_node(state: AgentState) -> dict:
     
     return {
         "task_type": task_type,
-        "current_agent": "triage"
+        "current_agent": "triage",
+        "status_updates": [{"type": "status", "stage": "triage", "message": f"Routing to {task_type} agent..."}]
     }
 
 
 async def research_node(state: AgentState) -> dict:
-    """Research agent - web and arxiv search."""
+    """Research agent - web and arxiv search with deep_research option."""
     llm = get_llm()
     
-    # Bind tools
+    # Bind tools including deep_research_tool
     tools = []
     search_tool = get_search_tool()
     if search_tool:
         tools.append(search_tool)
     tools.append(search_arxiv)
+    tools.append(deep_research_tool)  # Add deep research capability
     
     llm_with_tools = llm.bind_tools(tools) if tools else llm
     
-    messages = [SystemMessage(content=RESEARCH_SYSTEM_PROMPT)] + state["messages"]
+    messages = [SystemMessage(content=RESEARCH_SYSTEM_PROMPT)] + state.get("messages", [])
     
     response = await llm_with_tools.ainvoke(messages)
     
     return {
         "messages": [response],
-        "current_agent": "research"
+        "current_agent": "research",
+        "status_updates": [{"type": "status", "stage": "research", "message": "Researching..."}]
     }
 
 
@@ -224,13 +239,14 @@ async def coding_node(state: AgentState) -> dict:
     tools = [execute_python]
     llm_with_tools = llm.bind_tools(tools)
     
-    messages = [SystemMessage(content=CODING_SYSTEM_PROMPT)] + state["messages"]
+    messages = [SystemMessage(content=CODING_SYSTEM_PROMPT)] + state.get("messages", [])
     
     response = await llm_with_tools.ainvoke(messages)
     
     return {
         "messages": [response],
-        "current_agent": "coding"
+        "current_agent": "coding",
+        "status_updates": [{"type": "status", "stage": "coding", "message": "Executing code..."}]
     }
 
 
@@ -241,7 +257,7 @@ async def document_node(state: AgentState) -> dict:
     # Get document retriever
     doc_retriever = DocumentRetrieverTool()
     
-    messages = state["messages"]
+    messages = state.get("messages", [])
     last_message_content = messages[-1].content if messages else ""
     
     # Ensure it's a string
@@ -278,7 +294,7 @@ async def general_node(state: AgentState) -> dict:
     """General agent - direct response without tools."""
     llm = get_llm()
     
-    messages = [SystemMessage(content=GENERAL_SYSTEM_PROMPT)] + state["messages"]
+    messages = [SystemMessage(content=GENERAL_SYSTEM_PROMPT)] + state.get("messages", [])
     
     response = await llm.ainvoke(messages)
     
@@ -288,9 +304,67 @@ async def general_node(state: AgentState) -> dict:
     }
 
 
+async def deep_research_node(state: AgentState) -> dict:
+    """Deep Research agent - recursive multi-iteration research."""
+    messages = state.get("messages", [])
+    last_message = messages[-1].content if messages else ""
+    
+    # Ensure it's a string
+    if isinstance(last_message, list):
+        last_message = " ".join(str(c) for c in last_message)
+    
+    status_updates = []
+    
+    # Progress callback
+    def on_progress(progress):
+        status_updates.append({
+            "type": "status",
+            "stage": progress.stage,
+            "message": progress.message,
+            "depth": progress.current_depth,
+            "breadth": progress.current_breadth,
+            "current_query": progress.current_query
+        })
+    
+    # Run deep research
+    try:
+        result = await deep_research(
+            query=str(last_message),
+            breadth=4,
+            depth=2,
+            on_progress=on_progress
+        )
+        
+        # Generate report
+        report = await write_final_report(
+            prompt=str(last_message),
+            learnings=result.learnings,
+            visited_urls=result.visited_urls
+        )
+        
+        response_msg = AIMessage(content=report)
+        
+        return {
+            "messages": [response_msg],
+            "current_agent": "deep_research",
+            "status_updates": status_updates
+        }
+        
+    except Exception as e:
+        error_msg = f"Deep research error: {str(e)}"
+        return {
+            "messages": [AIMessage(content=error_msg)],
+            "current_agent": "deep_research",
+            "status_updates": [{"type": "error", "message": error_msg}]
+        }
+
+
 async def tool_executor_node(state: AgentState) -> dict:
     """Execute tools called by agents."""
-    messages = state["messages"]
+    messages = state.get("messages", [])
+    if not messages:
+        return {"messages": []}
+    
     last_message = messages[-1]
     
     # Check if AIMessage has tool_calls
@@ -321,7 +395,9 @@ def route_after_triage(state: AgentState) -> str:
     """Route to appropriate agent after triage."""
     task_type = state.get("task_type", "general")
     
-    if task_type == "research":
+    if task_type == "deep_research":
+        return "deep_research"
+    elif task_type == "research":
         return "research"
     elif task_type == "coding":
         return "coding"
@@ -333,7 +409,7 @@ def route_after_triage(state: AgentState) -> str:
 
 def should_use_tools(state: AgentState) -> str:
     """Check if agent wants to use tools."""
-    messages = state["messages"]
+    messages = state.get("messages", [])
     if not messages:
         return END
     
@@ -357,6 +433,7 @@ def create_multi_agent_graph():
     # Add nodes
     workflow.add_node("triage", triage_node)
     workflow.add_node("research", research_node)
+    workflow.add_node("deep_research", deep_research_node)
     workflow.add_node("coding", coding_node)
     workflow.add_node("document", document_node)
     workflow.add_node("general", general_node)
@@ -370,6 +447,7 @@ def create_multi_agent_graph():
         "triage",
         route_after_triage,
         {
+            "deep_research": "deep_research",
             "research": "research",
             "coding": "coding",
             "document": "document",
@@ -399,9 +477,10 @@ def create_multi_agent_graph():
         }
     )
     
-    # Direct end for document and general
+    # Direct end for document, general, and deep_research
     workflow.add_edge("document", END)
     workflow.add_edge("general", END)
+    workflow.add_edge("deep_research", END)
     
     return workflow.compile(checkpointer=MemorySaver())
 
@@ -429,7 +508,8 @@ class MultiAgentRunner:
             "current_agent": "",
             "task_type": "",
             "context": {},
-            "final_response": None
+            "final_response": None,
+            "status_updates": []
         }
         
         result = await self.graph.ainvoke(initial_state, config)  # type: ignore
@@ -463,7 +543,8 @@ class MultiAgentRunner:
             "current_agent": "",
             "task_type": "",
             "context": {},
-            "final_response": None
+            "final_response": None,
+            "status_updates": []
         }
         
         async for event in self.graph.astream(initial_state, config):  # type: ignore

@@ -5,6 +5,7 @@ import { ChatLoader } from "./ChatLoader";
 import { ChatMessage } from "./ChatMessage";
 import { ResetChat } from "./ResetChat";
 import { useDarkMode } from "../Contexts/DarkModeContext";
+import { Sparkles, Search, Code, FileText } from "lucide-react";
 
 interface Props {
   messages: Message[];
@@ -13,6 +14,30 @@ interface Props {
   onSend: (message: Message) => void;
   onReset: () => void;
 }
+
+// Suggestion chips data
+const suggestionChips = [
+  {
+    label: "Analyze latest AI papers",
+    prompt: "Nghiên cứu sâu về những paper AI mới nhất trong tháng này, đặc biệt về LLM và AI Agents",
+    icon: FileText,
+  },
+  {
+    label: "Research DeepSeek-R1",
+    prompt: "Nghiên cứu chi tiết về DeepSeek-R1 model: kiến trúc, hiệu năng và so sánh với GPT-4o",
+    icon: Search,
+  },
+  {
+    label: "Python Data Analysis",
+    prompt: "Hãy viết code Python để phân tích dữ liệu và tạo visualization với matplotlib",
+    icon: Code,
+  },
+  {
+    label: "Compare LLM Models",
+    prompt: "So sánh các LLM models: GPT-4, Claude, Gemini, Llama 3 về hiệu năng và use cases",
+    icon: Sparkles,
+  },
+];
 
 export const Chat: FC<Props> = ({ messages, loading, streaming, onSend, onReset }) => {
   const { darkMode } = useDarkMode();
@@ -32,6 +57,15 @@ export const Chat: FC<Props> = ({ messages, loading, streaming, onSend, onReset 
     }
   };
 
+  // Handle suggestion chip click
+  const handleSuggestionClick = (prompt: string) => {
+    if (loading || streaming) return;
+    onSend({
+      role: "user",
+      content: prompt,
+    });
+  };
+
   useEffect(() => {
     // Always scroll to bottom when streaming or new messages arrive
     scrollToBottom(true);
@@ -44,29 +78,42 @@ export const Chat: FC<Props> = ({ messages, loading, streaming, onSend, onReset 
       {/* Header with title and reset button */}
       <div className="flex-none px-4 py-4 sm:px-8">
         <div className="flex items-center justify-between mb-2">
-          <div className="text-2xl sm:text-3xl font-sans tracking-tight text-gray-900 dark:text-white">
-            Chatbot Soni
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-6 w-6 text-pink-500" />
+            <div className="text-2xl sm:text-3xl font-sans tracking-tight text-gray-900 dark:text-white">
+              AI Research Assistant
+            </div>
           </div>
           <ResetChat onReset={onReset} />
         </div>
         <div className="text-sm text-gray-500 dark:text-gray-400">
-          {count} {count === 1 ? 'message' : 'messages'}
+          {count} {count === 1 ? 'message' : 'messages'} • Deep Research • Web Search • Code Execution
         </div>
         
-        {/* Tags */}
+        {/* Suggestion Chips - Functional buttons */}
         <div className="mt-4 flex flex-wrap gap-2 border-b border-gray-200 pb-4 dark:border-gray-700">
-          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
-            Certified
-          </span>
-          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
-            Personalized
-          </span>
-          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
-            Experienced
-          </span>
-          <span className="inline-flex items-center rounded-full border border-pink-200 bg-pink-50 px-3 py-1 text-xs text-pink-700 dark:border-pink-800 dark:bg-pink-900/30 dark:text-pink-300">
-            Helpful
-          </span>
+          {suggestionChips.map((chip, index) => {
+            const Icon = chip.icon;
+            return (
+              <button
+                key={index}
+                onClick={() => handleSuggestionClick(chip.prompt)}
+                disabled={loading || streaming}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all
+                  ${loading || streaming 
+                    ? 'cursor-not-allowed opacity-50' 
+                    : 'cursor-pointer hover:scale-105 hover:shadow-md'
+                  }
+                  ${darkMode 
+                    ? 'border-pink-800 bg-pink-900/30 text-pink-300 hover:bg-pink-800/50' 
+                    : 'border-pink-200 bg-pink-50 text-pink-700 hover:bg-pink-100'
+                  }`}
+              >
+                <Icon className="h-3 w-3" />
+                {chip.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -77,8 +124,23 @@ export const Chat: FC<Props> = ({ messages, loading, streaming, onSend, onReset 
         className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-8"
       >
         {messages.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-pink-300 bg-white p-6 text-sm text-gray-500 dark:border-pink-700 dark:bg-gray-800 dark:text-gray-400">
-            No messages yet. Say hello to start.
+          <div className="rounded-xl border border-dashed border-pink-300 bg-white p-6 text-center dark:border-pink-700 dark:bg-gray-800">
+            <Sparkles className="mx-auto h-10 w-10 text-pink-400 mb-3" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              Welcome to AI Research Assistant
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              I can help you with deep research, web search, code execution, and more.
+              <br />
+              Try clicking one of the suggestion chips above or type your question below.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+              <span className="flex items-center gap-1"><Search className="h-3 w-3" /> Web Search</span>
+              <span>•</span>
+              <span className="flex items-center gap-1"><FileText className="h-3 w-3" /> ArXiv Papers</span>
+              <span>•</span>
+              <span className="flex items-center gap-1"><Code className="h-3 w-3" /> Python Execution</span>
+            </div>
           </div>
         ) : (
           <>
