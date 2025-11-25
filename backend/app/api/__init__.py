@@ -1,4 +1,0 @@
-"""
-API module - REST endpoints
-"""
-

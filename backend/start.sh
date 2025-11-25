@@ -1,36 +1,42 @@
 #!/bin/bash
-# Start Python Backend Server
+# =============================================================================
+# Personal AI Assistant - Backend Startup Script
+# =============================================================================
 
-echo "🚀 Starting Python FastAPI Backend..."
-echo ""
+set -e
 
-# Check if virtual environment exists
-if [ ! -d "venv" ]; then
-    echo "📦 Creating virtual environment..."
-    python3 -m venv venv
+echo "🤖 Personal AI Assistant - Backend Server"
+echo "=========================================="
+
+# Check if .env exists
+if [ ! -f ".env" ]; then
+    echo "⚠️  Warning: .env file not found!"
+    echo "   Creating from .env.example..."
+    cp .env.example .env 2>/dev/null || echo "   Please create .env manually"
 fi
 
-# Activate virtual environment
-echo "🔧 Activating virtual environment..."
-source venv/bin/activate
+# Check for virtual environment
+if [ -d "venv" ]; then
+    echo "📦 Activating virtual environment..."
+    source venv/bin/activate
+elif [ -d ".venv" ]; then
+    echo "📦 Activating virtual environment..."
+    source .venv/bin/activate
+else
+    echo "📦 Creating virtual environment..."
+    python3 -m venv venv
+    source venv/bin/activate
+fi
 
 # Install dependencies
 echo "📥 Installing dependencies..."
 pip install -q -r requirements.txt
 
-# Check if .env exists
-if [ ! -f ".env" ]; then
-    echo "⚠️  .env file not found. Creating from example..."
-    cp .env.example .env
-    echo "❗ Please edit backend/.env and add your GOOGLE_API_KEY"
-    exit 1
-fi
-
-# Start server
+# Start the server
 echo ""
-echo "✅ Starting FastAPI server on http://localhost:8000"
-echo "📚 API Docs: http://localhost:8000/docs"
+echo "🚀 Starting FastAPI server..."
+echo "   API: http://localhost:8000"
+echo "   Docs: http://localhost:8000/docs"
 echo ""
 
-cd api
-python api.py
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
