@@ -8,10 +8,10 @@ import { cls, timeAgo } from "./utils"
 
 // Suggestion chips for empty state
 const SUGGESTION_CHIPS = [
-  { label: "Quy chế thi là gì?", icon: "📋" },
-  { label: "Làm sao để xem lại bài giảng?", icon: "🎥" },
-  { label: "Quên mật khẩu thì làm thế nào?", icon: "🔑" },
-  { label: "Tiến độ học tập như thế nào thì đủ?", icon: "📊" },
+  { label: "Nghiên cứu về AI Agents", icon: "🔬" },
+  { label: "So sánh GPT-4 và Claude", icon: "⚖️" },
+  { label: "Phân tích dữ liệu với Python", icon: "📊" },
+  { label: "Tìm papers về LLM mới nhất", icon: "📄" },
 ]
 
 function SuggestionChips({ onSelectSuggestion }) {
@@ -21,10 +21,10 @@ function SuggestionChips({ onSelectSuggestion }) {
         <Sparkles className="h-8 w-8 text-white" />
       </div>
       <h3 className="mb-2 text-xl font-semibold text-zinc-900 dark:text-zinc-100">
-        Xin chào! Tôi là Chatbot Soni 👋
+        Xin chào! Tôi là AI Research Assistant 👋
       </h3>
       <p className="mb-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-        Tôi có thể giúp bạn với các câu hỏi về quy chế học tập. Hãy thử hỏi:
+        Tôi có thể giúp bạn nghiên cứu, phân tích và viết code. Hãy thử hỏi:
       </p>
       <div className="flex flex-wrap justify-center gap-2">
         {SUGGESTION_CHIPS.map((chip) => (
@@ -84,7 +84,7 @@ const ChatPane = forwardRef(function ChatPane(
 
   if (!conversation) return null
 
-  const tags = ["Bình dân học vụ số", "RAG-powered", "Llama 3.3 70B"]
+  const tags = ["Deep Research", "Multi-Agent", "Web Search", "Code Execution"]
   const messages = Array.isArray(conversation.messages) ? conversation.messages : []
   const count = messages.length || conversation.messageCount || 0
   
@@ -172,8 +172,8 @@ const ChatPane = forwardRef(function ChatPane(
                     </div>
                   </div>
                 ) : (
-                  <Message role={m.role} sources={m.sources}>
-                    <div className="whitespace-pre-wrap">{m.content}</div>
+                  <Message role={m.role} sources={m.sources} content={m.content}>
+                    {m.content}
                     {m.role === "user" && (
                       <div className="mt-1 flex gap-2 text-[11px] text-zinc-500">
                         <button className="inline-flex items-center gap-1 hover:underline" onClick={() => startEdit(m)}>

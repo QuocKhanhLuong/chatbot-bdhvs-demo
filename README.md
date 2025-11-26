@@ -64,18 +64,19 @@ chatbot-sinno/
 │   ├── app/
 │   │   ├── agents.py      # Multi-agent system
 │   │   ├── multi_agent_supervisor.py  # Supervisor-Researcher system
-│   │   ├── server.py      # FastAPI server
+│   │   ├── server.py      # FastAPI server with all endpoints
 │   │   ├── config.py      # Settings
-│   │   ├── tools/         # Agent tools
-│   │   │   ├── base.py    # Search, Python REPL, ArXiv
-│   │   │   ├── deep_research.py    # Original deep research
-│   │   │   ├── deep_research_v2.py # Enhanced v2 with Pydantic
-│   │   │   └── perplexity_engine.py # NEW: Perplexity-style engine
-│   │   └── api/v1/        # REST API endpoints
+│   │   └── tools/         # Agent tools
+│   │       ├── base.py    # Search, Python REPL, ArXiv
+│   │       ├── deep_research.py    # Original deep research
+│   │       ├── deep_research_v2.py # Enhanced v2 with Pydantic
+│   │       └── perplexity_engine.py # NEW: Perplexity-style engine
 │   ├── data/
 │   │   ├── chat_history.db # SQLite persistent storage
 │   │   ├── faiss_index/    # Vector embeddings
 │   │   └── pdf/            # Knowledge base documents
+│   ├── static/             # Static file serving (images, plots)
+│   │   └── images/         # Generated plots and images
 │   └── tests/
 ├── docker-compose.yml
 └── README.md
@@ -198,12 +199,13 @@ docker-compose up --build
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/health` | Health check |
-| POST | `/chat` | Chat with streaming SSE |
-| POST | `/api/v1/chat` | Chat (REST) |
-| POST | `/api/v1/search` | Similarity search |
-| GET | `/api/v1/threads` | List chat threads |
-| GET | `/api/v1/threads/{id}/history` | Get thread history |
+| GET | `/` | Health check with features list |
+| GET | `/health` | Simple health check |
+| POST | `/chat` | Single agent chat (REST) |
+| POST | `/chat/stream` | Single agent chat (SSE streaming) |
+| POST | `/agent/chat` | Multi-agent chat with auto-routing (REST) |
+| POST | `/agent/chat/stream` | Multi-agent chat (SSE streaming) |
+| GET | `/threads/{thread_id}/history` | Get chat thread history |
 
 ### 🔍 Answer Engine Endpoints (Perplexity-style)
 
