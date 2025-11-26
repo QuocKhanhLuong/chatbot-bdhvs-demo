@@ -307,18 +307,18 @@ export default function AIAssistantWithStreaming() {
                 )
               }
               
-              // Handle end event with sources
+              // Handle end event with agent info
               if (eventData.type === 'end') {
                 accumulatedChunks = eventData.content
-                const sources = eventData.sources || []
+                const agentUsed = eventData.agentUsed || 'general'
                 
-                // Final update with sources
+                // Final update with agent info
                 setConversations((prev) =>
                   prev.map((c) => {
                     if (c.id !== convId) return c
                     const msgs = (c.messages || []).map((m) =>
                       m.id === assistantMsgId 
-                        ? { ...m, content: accumulatedChunks, sources: sources, isStreaming: false } 
+                        ? { ...m, content: accumulatedChunks, agentUsed: agentUsed, isStreaming: false } 
                         : m
                     )
                     return { ...c, messages: msgs, preview: accumulatedChunks.slice(0, 80) }

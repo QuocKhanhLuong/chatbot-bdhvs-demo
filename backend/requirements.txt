@@ -48,4 +48,7 @@ sse-starlette>=2.0.0
 
 # HTML Parsing (for content extraction)
 beautifulsoup4>=4.12.0
+
+# Async file support for StaticFiles
+aiofiles>=24.1.0
 lxml>=5.0.0

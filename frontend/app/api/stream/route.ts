@@ -15,8 +15,9 @@ interface Source {
 
 interface BackendResponse {
   response: string;
-  sources?: Source[];
-  num_sources?: number;
+  thread_id: string;
+  tool_calls?: any[];
+  agent_used?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -61,17 +62,17 @@ export async function POST(request: NextRequest) {
           // Send start message
           sendSSE({ type: 'start', streamId });
 
-          console.log(`🔗 Calling Python backend at ${PYTHON_BACKEND_URL}/api/v1/chat`);
+          console.log(`🔗 Calling Python backend at ${PYTHON_BACKEND_URL}/agent/chat`);
 
-          // Call Python FastAPI backend (new Clean Architecture endpoint)
-          const response = await fetch(`${PYTHON_BACKEND_URL}/api/v1/chat`, {
+          // Call Python FastAPI backend (multi-agent endpoint)
+          const response = await fetch(`${PYTHON_BACKEND_URL}/agent/chat`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               message: lastMessage.content,
-              include_sources: includeSources
+              thread_id: streamId
             })
           });
 
@@ -82,9 +83,9 @@ export async function POST(request: NextRequest) {
 
           const data: BackendResponse = await response.json();
           const fullResponse = data.response;
-          const sources = data.sources || [];
+          const agentUsed = data.agent_used || 'general';
 
-          console.log(`✅ Received response from Python backend (${fullResponse.length} chars, ${sources.length} sources)`);
+          console.log(`✅ Received response from Python backend (${fullResponse.length} chars, agent: ${agentUsed})`);
 
           // Simulate streaming by sending characters one by one for smooth UX
           let accumulatedContent = '';
@@ -103,11 +104,11 @@ export async function POST(request: NextRequest) {
             await new Promise(resolve => setTimeout(resolve, 15));
           }
 
-          // Send completion message with sources
+          // Send completion message
           sendSSE({
             type: 'end',
             content: accumulatedContent,
-            sources: sources,
+            agentUsed: agentUsed,
             streamId
           });
 

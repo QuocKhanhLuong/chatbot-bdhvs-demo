@@ -9,12 +9,14 @@ Provides REST API endpoints for:
 """
 import json
 import uuid
+import os
 from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -107,6 +109,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Static file serving for images and plots
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+os.makedirs(os.path.join(STATIC_DIR, "images"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 # ============================================================================
