@@ -16,11 +16,18 @@ import xml.etree.ElementTree as ET
 from typing import Optional, List, Dict, Any
 import httpx
 from langchain_core.tools import tool
-from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_experimental.tools import PythonREPLTool
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import FastEmbedEmbeddings
 from langchain_core.documents import Document
+
+# Import new TavilySearch from langchain-tavily package
+try:
+    from langchain_tavily import TavilySearch
+    TAVILY_NEW = True
+except ImportError:
+    from langchain_community.tools.tavily_search import TavilySearchResults as TavilySearch
+    TAVILY_NEW = False
 
 from app.config import settings
 
@@ -29,7 +36,7 @@ from app.config import settings
 # Web Search Tools
 # =============================================================================
 
-def get_search_tool() -> Optional[TavilySearchResults]:
+def get_search_tool() -> Optional[TavilySearch]:
     """
     Initialize Tavily Search tool for web search capabilities.
     Returns None if API key is not configured.
@@ -40,19 +47,36 @@ def get_search_tool() -> Optional[TavilySearchResults]:
     
     os.environ["TAVILY_API_KEY"] = settings.tavily_api_key
     
-    return TavilySearchResults(
-        max_results=5,
-        search_depth="advanced",
-        include_answer=True,
-        include_raw_content=True,
-        name="web_search",
-        description=(
-            "Search the web for current information. "
-            "Use this when you need up-to-date information about AI research, news, "
-            "papers, or any topic that requires recent data. "
-            "Input should be a search query string."
+    if TAVILY_NEW:
+        # New TavilySearch from langchain-tavily package
+        return TavilySearch(
+            max_results=5,
+            topic="general",
+            include_answer=True,
+            include_raw_content=True,
+            name="web_search",
+            description=(
+                "Search the web for current information. "
+                "Use this when you need up-to-date information about AI research, news, "
+                "papers, or any topic that requires recent data. "
+                "Input should be a search query string."
+            )
         )
-    )
+    else:
+        # Fallback to old TavilySearchResults (deprecated)
+        return TavilySearch(
+            max_results=5,
+            search_depth="advanced",
+            include_answer=True,
+            include_raw_content=True,
+            name="web_search",
+            description=(
+                "Search the web for current information. "
+                "Use this when you need up-to-date information about AI research, news, "
+                "papers, or any topic that requires recent data. "
+                "Input should be a search query string."
+            )
+        )
 
 
 @tool
@@ -73,12 +97,22 @@ async def search_web_async(query: str, num_results: int = 5) -> str:
     
     os.environ["TAVILY_API_KEY"] = settings.tavily_api_key
     
-    search_tool = TavilySearchResults(
-        max_results=min(num_results, 10),
-        search_depth="advanced",
-        include_raw_content=True,
-        include_answer=True,
-    )
+    if TAVILY_NEW:
+        search_tool = TavilySearch(
+            max_results=min(num_results, 10),
+            topic="general",
+            include_raw_content=True,
+            include_answer=True,
+        )
+    else:
+        # Fallback to deprecated version
+        from langchain_community.tools.tavily_search import TavilySearchResults
+        search_tool = TavilySearchResults(
+            max_results=min(num_results, 10),
+            search_depth="advanced",
+            include_raw_content=True,
+            include_answer=True,
+        )
     
     results = await asyncio.to_thread(search_tool.invoke, query)
     

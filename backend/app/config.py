@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     
     # MegaLLM Configuration (OpenAI-compatible API)
     megallm_base_url: str = "https://ai.megallm.io/v1"
-    megallm_model: str = "llama3-8b-instruct"  # Free tier model
+    megallm_model: str = "openai-gpt-oss-120b"  # Best model as default
     
     # Model Configuration
     llm_provider: str = "megallm"  # "openai", "google", or "megallm"

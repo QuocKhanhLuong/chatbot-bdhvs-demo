@@ -566,6 +566,414 @@ async def search_arxiv_endpoint(request: ArxivSearchRequest):
 
 
 # ============================================================================
+# SUPERVISOR RESEARCH ENDPOINTS
+# ============================================================================
+
+class SupervisorResearchRequest(BaseModel):
+    """Request for supervisor-based research."""
+    topic: str = Field(..., description="Research topic")
+    max_sections: int = Field(default=5, ge=1, le=10, description="Max report sections")
+    enable_personas: bool = Field(default=True, description="Use multi-perspective personas")
+    num_personas: int = Field(default=3, ge=1, le=5, description="Number of personas")
+    enable_review_loop: bool = Field(default=True, description="Enable review/revision cycle")
+    max_review_iterations: int = Field(default=3, ge=1, le=5, description="Max review iterations")
+    enable_human_feedback: bool = Field(default=False, description="Enable human-in-the-loop")
+    export_formats: list[str] = Field(default=["markdown"], description="Export formats")
+    language: str = Field(default="vi", description="Output language")
+
+
+@app.post("/research/supervisor")
+async def supervisor_research_endpoint(request: SupervisorResearchRequest):
+    """
+    Run supervisor-based multi-agent research.
+    
+    Features:
+    - Supervisor-Researcher pattern with parallel research
+    - Optional persona-based multi-perspective research
+    - Optional review loop with Reviewer → Reviser cycle
+    - Multi-format export (markdown, html, pdf, docx)
+    - Human-in-the-loop support
+    """
+    from app.multi_agent_supervisor import (
+        run_supervisor_research, 
+        SupervisorConfig, 
+        ExportFormat
+    )
+    
+    try:
+        # Map string export formats to enum
+        export_formats = []
+        for fmt in request.export_formats:
+            try:
+                export_formats.append(ExportFormat(fmt.lower()))
+            except ValueError:
+                export_formats.append(ExportFormat.MARKDOWN)
+        
+        config = SupervisorConfig(
+            max_sections=request.max_sections,
+            enable_personas=request.enable_personas,
+            num_personas=request.num_personas,
+            enable_review_loop=request.enable_review_loop,
+            max_review_iterations=request.max_review_iterations,
+            enable_human_feedback=request.enable_human_feedback,
+            export_formats=export_formats,
+            language=request.language
+        )
+        
+        result = await run_supervisor_research(
+            topic=request.topic,
+            config=config
+        )
+        
+        return {
+            "status": "success",
+            "topic": request.topic,
+            "final_report": result.get("final_report", ""),
+            "exports": result.get("exports", {}),
+            "personas_used": [p.dict() for p in result.get("personas", [])],
+            "sections_count": len(result.get("completed_sections", [])),
+            "thinking_log": [t.dict() for t in result.get("thinking_log", [])]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Supervisor research error: {str(e)}"
+        )
+
+
+@app.post("/research/supervisor/stream")
+async def supervisor_research_stream(request: SupervisorResearchRequest):
+    """
+    Streaming supervisor-based research with real-time progress updates.
+    """
+    from app.multi_agent_supervisor import (
+        run_supervisor_research, 
+        SupervisorConfig, 
+        ExportFormat
+    )
+    
+    async def generate():
+        try:
+            # Map export formats
+            export_formats = []
+            for fmt in request.export_formats:
+                try:
+                    export_formats.append(ExportFormat(fmt.lower()))
+                except ValueError:
+                    export_formats.append(ExportFormat.MARKDOWN)
+            
+            config = SupervisorConfig(
+                max_sections=request.max_sections,
+                enable_personas=request.enable_personas,
+                num_personas=request.num_personas,
+                enable_review_loop=request.enable_review_loop,
+                max_review_iterations=request.max_review_iterations,
+                enable_human_feedback=request.enable_human_feedback,
+                export_formats=export_formats,
+                language=request.language
+            )
+            
+            progress_updates = []
+            
+            def on_progress(update):
+                progress_updates.append(update)
+            
+            result = await run_supervisor_research(
+                topic=request.topic,
+                config=config,
+                on_progress=on_progress
+            )
+            
+            # Stream progress updates
+            for update in progress_updates:
+                yield f"data: {json.dumps({'type': 'progress', **update})}\n\n"
+            
+            # Stream final result
+            yield f"data: {json.dumps({'type': 'result', 'report': result.get('final_report', '')})}\n\n"
+            
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
+
+
+# ============================================================================
+# PERPLEXITY-STYLE ANSWER ENGINE ENDPOINTS
+# ============================================================================
+
+class AnswerRequest(BaseModel):
+    """Request for answer engine (Perplexity-style)."""
+    query: str = Field(..., description="User's question")
+    include_images: bool = Field(default=True, description="Include relevant images")
+    include_academic: bool = Field(default=True, description="Include academic sources")
+    enable_pro_search: bool = Field(default=False, description="Enable multi-step Pro Search")
+    enable_consensus: bool = Field(default=False, description="Enable consensus analysis")
+    max_sources: int = Field(default=10, ge=1, le=20, description="Maximum sources to use")
+    language: str = Field(default="vi", description="Response language (vi/en)")
+
+
+class QuickSearchRequest(BaseModel):
+    """Request for quick search."""
+    query: str = Field(..., description="Search query")
+    num_results: int = Field(default=5, ge=1, le=10, description="Number of results")
+    language: str = Field(default="vi", description="Response language")
+
+
+@app.post("/answer")
+async def answer_endpoint(request: AnswerRequest):
+    """
+    Perplexity-style answer engine.
+    
+    Returns comprehensive answer with:
+    - Inline citations [1], [2], etc.
+    - Source list with metadata
+    - Related follow-up questions
+    - Images (optional)
+    - Academic consensus analysis (optional)
+    
+    Example:
+    ```
+    POST /answer
+    {
+        "query": "What are the health benefits of intermittent fasting?",
+        "include_academic": true,
+        "enable_consensus": true
+    }
+    ```
+    """
+    from app.tools.perplexity_engine import (
+        answer_engine,
+        AnswerEngineConfig
+    )
+    
+    try:
+        config = AnswerEngineConfig(
+            include_images=request.include_images,
+            include_academic=request.include_academic,
+            enable_pro_search=request.enable_pro_search,
+            enable_consensus=request.enable_consensus,
+            max_sources=request.max_sources,
+            language=request.language
+        )
+        
+        result = await answer_engine(request.query, config)
+        
+        return {
+            "status": "success",
+            "answer": result.answer,
+            "citations": [c.dict() for c in result.citations],
+            "related_questions": [q.dict() for q in result.related_questions],
+            "images": result.images,
+            "consensus": result.consensus.dict() if result.consensus else None,
+            "sources_count": len(result.search_results)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Answer engine error: {str(e)}"
+        )
+
+
+@app.post("/answer/stream")
+async def answer_stream_endpoint(request: AnswerRequest):
+    """
+    Streaming Perplexity-style answer engine.
+    
+    Returns SSE events:
+    - begin: Query started
+    - query-plan: Pro Search steps (if enabled)
+    - search-results: Sources found
+    - text-chunk: Answer chunks (streamed)
+    - citation: Used citations
+    - related-questions: Follow-up questions
+    - consensus: Academic consensus (if enabled)
+    - images: Relevant images
+    - done: Complete
+    """
+    from app.tools.perplexity_engine import (
+        answer_engine_stream,
+        AnswerEngineConfig
+    )
+    
+    async def generate():
+        try:
+            config = AnswerEngineConfig(
+                include_images=request.include_images,
+                include_academic=request.include_academic,
+                enable_pro_search=request.enable_pro_search,
+                enable_consensus=request.enable_consensus,
+                max_sources=request.max_sources,
+                language=request.language
+            )
+            
+            async for event in answer_engine_stream(request.query, config):
+                yield f"data: {json.dumps(event)}\n\n"
+                
+        except Exception as e:
+            yield f"data: {json.dumps({'event': 'error', 'data': {'error': str(e)}})}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"
+        }
+    )
+
+
+@app.post("/answer/quick")
+async def quick_answer_endpoint(request: QuickSearchRequest):
+    """
+    Quick search for simple queries.
+    
+    Faster than full answer engine, returns:
+    - Brief answer with citations
+    - Source list
+    - Images
+    """
+    from app.tools.perplexity_engine import quick_search
+    
+    try:
+        result = await quick_search(
+            query=request.query,
+            num_results=request.num_results,
+            language=request.language
+        )
+        
+        return {
+            "status": "success",
+            **result
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Quick search error: {str(e)}"
+        )
+
+
+@app.post("/answer/pro")
+async def pro_search_endpoint(request: AnswerRequest):
+    """
+    Pro Search with multi-step query planning.
+    
+    Breaks down complex queries into steps:
+    1. Research step A
+    2. Research step B (depends on A)
+    3. Compare/synthesize results
+    
+    Best for:
+    - Comparison queries ("Compare X vs Y")
+    - Multi-faceted research
+    - Complex questions requiring multiple angles
+    """
+    # Force enable pro search
+    request.enable_pro_search = True
+    
+    from app.tools.perplexity_engine import (
+        answer_engine,
+        AnswerEngineConfig
+    )
+    
+    try:
+        config = AnswerEngineConfig(
+            include_images=request.include_images,
+            include_academic=request.include_academic,
+            enable_pro_search=True,
+            enable_consensus=request.enable_consensus,
+            max_sources=request.max_sources,
+            language=request.language
+        )
+        
+        result = await answer_engine(request.query, config)
+        
+        return {
+            "status": "success",
+            "answer": result.answer,
+            "citations": [c.dict() for c in result.citations],
+            "related_questions": [q.dict() for q in result.related_questions],
+            "query_plan": result.query_plan.dict() if result.query_plan else None,
+            "images": result.images,
+            "consensus": result.consensus.dict() if result.consensus else None,
+            "sources_count": len(result.search_results)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Pro search error: {str(e)}"
+        )
+
+
+@app.post("/answer/consensus")
+async def consensus_search_endpoint(request: AnswerRequest):
+    """
+    Consensus-style academic search.
+    
+    Focuses on academic sources and provides:
+    - Agreement level (strong_yes, yes, mixed, no, strong_no)
+    - Confidence score (0-1)
+    - Key findings from studies
+    - Study design breakdown (RCT, Meta-analysis, etc.)
+    - Evidence quality assessment
+    
+    Best for:
+    - Health/medical questions
+    - Scientific research questions
+    - Evidence-based inquiries
+    """
+    # Force enable academic and consensus
+    request.include_academic = True
+    request.enable_consensus = True
+    
+    from app.tools.perplexity_engine import (
+        answer_engine,
+        AnswerEngineConfig
+    )
+    
+    try:
+        config = AnswerEngineConfig(
+            include_images=False,
+            include_academic=True,
+            enable_pro_search=False,
+            enable_consensus=True,
+            max_sources=request.max_sources,
+            language=request.language
+        )
+        
+        result = await answer_engine(request.query, config)
+        
+        return {
+            "status": "success",
+            "answer": result.answer,
+            "consensus": result.consensus.dict() if result.consensus else None,
+            "citations": [c.dict() for c in result.citations],
+            "academic_sources": [
+                s.dict() for s in result.search_results 
+                if s.source_type == "academic"
+            ],
+            "related_questions": [q.dict() for q in result.related_questions]
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Consensus search error: {str(e)}"
+        )
+
+
+# ============================================================================
 # MAIN ENTRY POINT
 # ============================================================================
 
